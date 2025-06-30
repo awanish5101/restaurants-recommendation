@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -24,41 +25,66 @@ public class RestaurantService {
 
     public List<RecommendationDTO> getTopRecommendations(UserPreference pref, double userLat, double userLon) {
         return restaurantRepo.findAll().stream()
-                // filter by cuisine, rating & price
-                .filter(r -> r.getCuisines().stream()
-                        .anyMatch(c -> c.equalsIgnoreCase(pref.getPreferredCuisine())))
-                .filter(r -> r.getRating().getOverallRating() >= pref.getMinimumRating())
-                .filter(r -> r.getPriceRange() <= pref.getPreferredPriceRange())
-                // enrich with distance & score
-                .map(r -> {
-                    double distance = DistanceCalculator.haversine(
-                            userLat, userLon,
-                            r.getGeoLocation().getLatitude(),
-                            r.getGeoLocation().getLongitude());
-                    if (distance > pref.getMaxDistanceInKm()) return null;
-
-                    int visits = historyService.getRestaurantHistory(r.getId()).size();
-                    double score = computeScore(
-                            r.getRating().getOverallRating(),
-                            distance,
-                            visits,
-                            pref.isPrioritizeRating() ? 0.6 : 0.3,
-                            pref.isPrioritizeRating() ? 0.2 : 0.4,
-                            0.2
-                    );
-                    return new Scored(r, distance, score);
-                })
-                .filter(s -> s != null)
+                .filter(r -> isCuisineMatch(r, pref))
+                .filter(r -> isRatingAcceptable(r, pref))
+                .filter(r -> isPriceWithinRange(r, pref))
+                .map(r -> scoreAndRank(r, pref, userLat, userLon))
+                .flatMap(Optional::stream)
                 .sorted(Comparator.comparingDouble(Scored::score).reversed())
                 .limit(5)
-                .map(s -> {
-                    String prompt = buildPrompt(s.restaurant(), s.distance(), pref);
-                    //String explanation = openAIClient.generateExplanation(prompt);
-                    String explanation = geminiClient.generateExplanation(prompt);
-                    return new RecommendationDTO(s.restaurant().getName(), explanation, s.score(), s.distance());
-                })
+                .map(scored -> toRecommendationDTO(scored, pref))
                 .collect(Collectors.toList());
     }
+
+    private boolean isCuisineMatch(Restaurant r, UserPreference pref) {
+        String prefCuisine = pref.getPreferredCuisine();
+        if (prefCuisine == null || prefCuisine.isBlank() || r.getCuisines() == null) return false;
+
+        return r.getCuisines().stream()
+                .anyMatch(c -> c.trim().equalsIgnoreCase(prefCuisine.trim()));
+    }
+
+
+    private boolean isRatingAcceptable(Restaurant r, UserPreference pref) {
+        return r.getRating() != null && r.getRating().getOverallRating() >= pref.getMinimumRating();
+    }
+
+    private boolean isPriceWithinRange(Restaurant r, UserPreference pref) {
+        return r.getPriceRange() <= pref.getPreferredPriceRange();
+    }
+
+    private Optional<Scored> scoreAndRank(Restaurant r, UserPreference pref, double userLat, double userLon) {
+        double distance = DistanceCalculator.haversine(
+                userLat, userLon,
+                r.getGeoLocation().getLatitude(),
+                r.getGeoLocation().getLongitude());
+
+        if (distance > pref.getMaxDistanceInKm()) return Optional.empty();
+
+        int visitCount = historyService.getRestaurantHistory(r.getId()).size();
+
+        double score = computeScore(
+                r.getRating().getOverallRating(),
+                distance,
+                visitCount,
+                pref.isPrioritizeRating() ? 0.6 : 0.3,
+                pref.isPrioritizeRating() ? 0.2 : 0.4,
+                0.2
+        );
+
+        return Optional.of(new Scored(r, distance, score));
+    }
+
+    private RecommendationDTO toRecommendationDTO(Scored s, UserPreference pref) {
+        String prompt = buildPrompt(s.restaurant(), s.distance(), pref);
+        String explanation = geminiClient.generateExplanation(prompt);
+        return new RecommendationDTO(
+                s.restaurant().getName(),
+                explanation,
+                s.score(),
+                s.distance());
+    }
+
 
     private record Scored(Restaurant restaurant, double distance, double score) {
     }
