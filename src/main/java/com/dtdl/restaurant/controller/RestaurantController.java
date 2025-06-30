@@ -1,7 +1,10 @@
 package com.dtdl.restaurant.controller;
 
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,28 +16,17 @@ import com.dtdl.restaurant.service.RestaurantService;
 
 @RestController
 @RequestMapping("/api/restaurants")
+@Validated
+@RequiredArgsConstructor
 public class RestaurantController {
 
-    @Autowired
-    private RestaurantService service;
+    private final RestaurantService restaurantService;
 
-    //    @PostMapping("/recommend")
-//    public List<Restaurant> recommend(@RequestBody UserPreference pref,
-//                                      @RequestParam double lat,
-//                                      @RequestParam double lon) {
-//        return service.getTopRestaurants(pref, lat, lon);
-//    }
     @PostMapping("/recommend")
-    public List<RecommendationDTO> recommend(@RequestBody UserPreference pref,
-                                             @RequestParam double lat,
-                                             @RequestParam double lon) {
-        return service.getTopRestaurants(pref, lat, lon);
+    public List<RecommendationDTO> recommend(
+            @RequestBody UserPreference preference,
+            @RequestParam double latitude,
+            @RequestParam double longitude) {
+        return restaurantService.getTopRecommendations(preference, latitude, longitude);
     }
 }
-//    @GetMapping("/recommend/explain")
-//    public Mono<String> explainRecommendation(@RequestParam String restaurant,
-//                                              @RequestParam String cuisine,
-//                                              @RequestParam double rating,
-//                                              @RequestParam double distanceKm) {
-//        return service.getOpenAIRecommendationExplanation(restaurant, cuisine, rating, distanceKm);
-//    }

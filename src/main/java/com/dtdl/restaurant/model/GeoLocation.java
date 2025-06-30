@@ -3,8 +3,10 @@ package com.dtdl.restaurant.model;
 import lombok.Data;
 import java.util.List;
 
+import lombok.Data;
+
 @Data
 public class GeoLocation {
-    private String type;
-    private List<Double> coordinates; // [longitude, latitude]
+    private double longitude;
+    private double latitude;
 }

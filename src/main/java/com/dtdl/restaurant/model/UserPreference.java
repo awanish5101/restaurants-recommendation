@@ -5,9 +5,9 @@ import lombok.Data;
 @Data
 public class UserPreference {
     private String preferredCuisine;
-    private double maxDistanceKm;
+    private double maxDistanceInKm;
     private boolean prioritizeRating;
-    private int preferredPriceRange; // NEW
-    private int minRating;
+    private int preferredPriceRange;
+    private int minimumRating;
 }
 
