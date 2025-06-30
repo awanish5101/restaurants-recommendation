@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,6 +21,7 @@ import com.dtdl.restaurant.model.UserPreference;
 import com.dtdl.restaurant.repository.RestaurantRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 
 @Service
@@ -82,27 +84,27 @@ public class RestaurantService {
         return recommendations;
     }
 
-    // Helper Method 1
-    //OpenAI-based explanation real-time me kaam kare
-    //Transparent Justification(Explanation returned in RecommendationDTO)
-//    private RecommendationDTO generateExplanation(ScoredRestaurant sr, UserPreference pref) {
-//        Restaurant r = sr.getRestaurant();
-//        String prompt = buildPrompt(r, sr.getDistance(), pref);
-//        String justification = getOpenAIExplanation(prompt);
-//        return new RecommendationDTO(r.getName(), justification, sr.getScore(), sr.getDistance());
-//    }
-
-
+//     Helper Method 1
+//    OpenAI-based explanation real-time me kaam kare
+//    Transparent Justification(Explanation returned in RecommendationDTO)
     private RecommendationDTO generateExplanation(ScoredRestaurant sr, UserPreference pref) {
         Restaurant r = sr.getRestaurant();
-        String justification = String.format(
-                "#1 match for your '%s' preference, %.1f★ rating, and %.1f km away.",
-                pref.getPreferredCuisine(),
-                r.getRating().getOverallRating(),
-                sr.getDistance()
-        );
+        String prompt = buildPrompt(r, sr.getDistance(), pref);
+        String justification = getOpenAIExplanation(prompt);
         return new RecommendationDTO(r.getName(), justification, sr.getScore(), sr.getDistance());
     }
+
+
+//    private RecommendationDTO generateExplanation(ScoredRestaurant sr, UserPreference pref) {
+//        Restaurant r = sr.getRestaurant();
+//        String justification = String.format(
+//                "#1 match for your '%s' preference, %.1f★ rating, and %.1f km away.",
+//                pref.getPreferredCuisine(),
+//                r.getRating().getOverallRating(),
+//                sr.getDistance()
+//        );
+//        return new RecommendationDTO(r.getName(), justification, sr.getScore(), sr.getDistance());
+//    }
 
 
     // Helper Method 2
@@ -130,33 +132,51 @@ public class RestaurantService {
     public String getOpenAIExplanation(String prompt) {
         initWebClient();
 
-        Map<String, Object> body = Map.of("model", "gpt-3.5-turbo", "messages", new Object[]{Map.of("role", "system", "content", "You are a helpful assistant."), Map.of("role", "user", "content", prompt)}, "temperature", 0.7);
+        Map<String, Object> body = Map.of(
+                "model",       "gpt-3.5-turbo",
+                "temperature", 0.7,
+                "messages", List.of(
+                        Map.of("role",    "system", "content", "You are a helpful assistant."),
+                        Map.of("role",    "user",   "content", prompt)
+                )
+        );
 
         try {
             log.info("Sending request to OpenAI API...");
 
-            Thread.sleep(3000);
             JsonNode response = webClient.post()
+                    .uri("/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
-                    .retrieve()
-                    .onStatus(
-                            status -> status.value() == 429,
-                            clientResponse -> {
-                                log.warn("429 Too Many Requests - Retrying after delay...");
-                                return clientResponse.createException();
-                            }
-                    )
+                    .retrieve()                               // throws on non-2xx
                     .bodyToMono(JsonNode.class)
-                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)))
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
+                            // only retry if it’s a 429 from OpenAI
+                            .filter(throwable ->
+                                    throwable instanceof WebClientResponseException &&
+                                            ((WebClientResponseException) throwable)
+                                                    .getStatusCode() == HttpStatus.TOO_MANY_REQUESTS
+                            )
+                            .doBeforeRetry(retrySignal ->
+                                    log.warn("Received 429, retry #{}, next in {}s",
+                                            retrySignal.totalRetriesInARow(),
+                                            retrySignal.totalRetriesInARow() * 2)
+                            )
+                    )
                     .block();
-
 
             log.info("Response received from OpenAI.");
             return response.at("/choices/0/message/content").asText();
 
+        } catch (WebClientResponseException e) {
+            // now you’ll see status + body
+            log.error("OpenAI API error: {} — {}",
+                    e.getStatusCode(),
+                    e.getResponseBodyAsString());
+            return "OpenAI API error: " + e.getStatusCode();
+
         } catch (Exception ex) {
-            log.error("Error while calling OpenAI API: {}", ex.getMessage(), ex);
+            log.error("Error while calling OpenAI API", ex);
             return "Could not generate explanation due to an internal error.";
         }
     }
