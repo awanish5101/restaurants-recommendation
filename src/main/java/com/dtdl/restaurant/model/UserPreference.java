@@ -7,5 +7,7 @@ public class UserPreference {
     private String preferredCuisine;
     private double maxDistanceKm;
     private boolean prioritizeRating;
+    private int preferredPriceRange; // NEW
+    private int minRating;
 }
 
