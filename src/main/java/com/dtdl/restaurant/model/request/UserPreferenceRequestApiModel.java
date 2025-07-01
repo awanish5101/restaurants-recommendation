@@ -1,9 +1,9 @@
-package com.dtdl.restaurant.model;
+package com.dtdl.restaurant.model.request;
 
 import lombok.Data;
 
 @Data
-public class UserPreference {
+public class UserPreferenceRequestApiModel {
     private String preferredCuisine;
     private double maxDistanceInKm;
     private boolean prioritizeRating;

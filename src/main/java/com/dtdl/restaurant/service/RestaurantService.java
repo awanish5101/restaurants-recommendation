@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import com.dtdl.restaurant.model.RecommendationDTO;
 import com.dtdl.restaurant.model.Restaurant;
-import com.dtdl.restaurant.model.UserPreference;
+import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
 import com.dtdl.restaurant.repository.RestaurantRepository;
 
 
@@ -18,25 +18,25 @@ import com.dtdl.restaurant.repository.RestaurantRepository;
 @RequiredArgsConstructor
 public class RestaurantService {
 
-    private final RestaurantRepository restaurantRepo;
-    private final UserHistoryService historyService;
+    private final RestaurantRepository restaurantRepository;
+    private final UserHistoryService userHistoryService;
     private final OpenAIClient openAIClient;
     private final GeminiClient geminiClient;
 
-    public List<RecommendationDTO> getTopRecommendations(UserPreference pref, double userLat, double userLon) {
-        return restaurantRepo.findAll().stream()
-                .filter(r -> isCuisineMatch(r, pref))
-                .filter(r -> isRatingAcceptable(r, pref))
-                .filter(r -> isPriceWithinRange(r, pref))
-                .map(r -> scoreAndRank(r, pref, userLat, userLon))
+    public List<RecommendationDTO> getTopRestaurantRecommendations(UserPreferenceRequestApiModel userPreferenceRequest, double userLatitude, double userLongitude) {
+        return restaurantRepository.findAll().stream()
+                .filter(r -> isCuisineMatch(r, userPreferenceRequest))
+                .filter(r -> isRatingAcceptable(r, userPreferenceRequest))
+                .filter(r -> isPriceWithinRange(r, userPreferenceRequest))
+                .map(r -> scoreAndRank(r, userPreferenceRequest, userLatitude, userLongitude))
                 .flatMap(Optional::stream)
                 .sorted(Comparator.comparingDouble(Scored::score).reversed())
                 .limit(5)
-                .map(scored -> toRecommendationDTO(scored, pref))
+                .map(scored -> toRecommendationDTO(scored, userPreferenceRequest))
                 .collect(Collectors.toList());
     }
 
-    private boolean isCuisineMatch(Restaurant r, UserPreference pref) {
+    private boolean isCuisineMatch(Restaurant r, UserPreferenceRequestApiModel pref) {
         String prefCuisine = pref.getPreferredCuisine();
         if (prefCuisine == null || prefCuisine.isBlank() || r.getCuisines() == null) return false;
 
@@ -45,15 +45,15 @@ public class RestaurantService {
     }
 
 
-    private boolean isRatingAcceptable(Restaurant r, UserPreference pref) {
+    private boolean isRatingAcceptable(Restaurant r, UserPreferenceRequestApiModel pref) {
         return r.getRating() != null && r.getRating().getOverallRating() >= pref.getMinimumRating();
     }
 
-    private boolean isPriceWithinRange(Restaurant r, UserPreference pref) {
+    private boolean isPriceWithinRange(Restaurant r, UserPreferenceRequestApiModel pref) {
         return r.getPriceRange() <= pref.getPreferredPriceRange();
     }
 
-    private Optional<Scored> scoreAndRank(Restaurant r, UserPreference pref, double userLat, double userLon) {
+    private Optional<Scored> scoreAndRank(Restaurant r, UserPreferenceRequestApiModel pref, double userLat, double userLon) {
         double distance = DistanceCalculator.haversine(
                 userLat, userLon,
                 r.getGeoLocation().getLatitude(),
@@ -61,7 +61,7 @@ public class RestaurantService {
 
         if (distance > pref.getMaxDistanceInKm()) return Optional.empty();
 
-        int visitCount = historyService.getRestaurantHistory(r.getId()).size();
+        int visitCount = userHistoryService.getRestaurantHistory(r.getId()).size();
 
         double score = computeScore(
                 r.getRating().getOverallRating(),
@@ -75,7 +75,7 @@ public class RestaurantService {
         return Optional.of(new Scored(r, distance, score));
     }
 
-    private RecommendationDTO toRecommendationDTO(Scored s, UserPreference pref) {
+    private RecommendationDTO toRecommendationDTO(Scored s, UserPreferenceRequestApiModel pref) {
         String prompt = buildPrompt(s.restaurant(), s.distance(), pref);
         String explanation = geminiClient.generateExplanation(prompt);
         return new RecommendationDTO(
@@ -83,10 +83,6 @@ public class RestaurantService {
                 explanation,
                 s.score(),
                 s.distance());
-    }
-
-
-    private record Scored(Restaurant restaurant, double distance, double score) {
     }
 
     private double computeScore(double rating, double distance, int visits,
@@ -97,7 +93,7 @@ public class RestaurantService {
         return normRating * wRating + normDistance * wDistance + normPopularity * wPopularity;
     }
 
-    private String buildPrompt(Restaurant r, double distance, UserPreference pref) {
+    private String buildPrompt(Restaurant r, double distance, UserPreferenceRequestApiModel pref) {
         return String.format("""
                 Given the following restaurant and user preferences, generate a 1-line explanation why the restaurant is a top recommendation.
                 
@@ -115,5 +111,8 @@ public class RestaurantService {
                 
                 Now generate the explanation.
                 """, pref.getPreferredCuisine(), pref.getMaxDistanceInKm(), pref.getMinimumRating(), r.getName(), r.getCuisines(), r.getRating().getOverallRating(), distance, r.getDescription());
+    }
+
+    private record Scored(Restaurant restaurant, double distance, double score) {
     }
 }
