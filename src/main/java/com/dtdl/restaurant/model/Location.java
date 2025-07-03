@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class Location {
     private String neighborhood;
-    private double latitude;
-    private double longitude;
+    private double lat;
+    private double lon;
     private Address address;
 }

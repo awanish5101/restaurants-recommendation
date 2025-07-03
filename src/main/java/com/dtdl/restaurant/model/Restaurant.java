@@ -22,7 +22,7 @@ public class Restaurant {
     private String websiteUrl;
     private String facebookUrl;
     private String twitterUrl;
-
+    private double distance;
 //    private long id;
 //    private String name;
 //    private String description;

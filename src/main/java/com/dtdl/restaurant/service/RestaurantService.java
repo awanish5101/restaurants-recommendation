@@ -2,7 +2,7 @@ package com.dtdl.restaurant.service;
 import com.dtdl.restaurant.model.AiRecommendation;
 import com.dtdl.restaurant.model.RecommendationDTO;
 import com.dtdl.restaurant.model.Restaurant;
- import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
+  import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
 import com.dtdl.restaurant.repository.RestaurantRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,14 +12,14 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Service
- @RequiredArgsConstructor
+ @Service
+  @RequiredArgsConstructor
 @Slf4j
-public class RestaurantService {
+ public class RestaurantService {
 
-     private final RestaurantRepository restaurantRepository;
-     private final UserHistoryService userHistoryService;
-     private final GeminiClient geminiClient;
+      private final RestaurantRepository restaurantRepository;
+      private final UserHistoryService userHistoryService;
+      private final GeminiClient geminiClient;
      private final ObjectMapper objectMapper;
     public List<RecommendationDTO> getTopRestaurantRecommendations(UserPreferenceRequestApiModel pref, double userLat, double userLon) {
         List<Restaurant> nearbyRestaurants = restaurantRepository.findAll().stream()
@@ -31,7 +31,7 @@ public class RestaurantService {
                     r.setDistance(distance);
                 })
                 .filter(r -> r.getDistance() <= 80.46) // ~50 miles
-                .collect(Collectors.toList());
+                 .collect(Collectors.toList());
 
         if (nearbyRestaurants.isEmpty()) return Collections.emptyList();
 
@@ -44,9 +44,9 @@ public class RestaurantService {
     private String buildPrompt(UserPreferenceRequestApiModel pref, List<Restaurant> restaurants, double userLat, double userLon) {
         StringBuilder sb = new StringBuilder("""
                 You are an expert restaurant recommendation AI.
-                
+                 
                 Your job is to return exactly 10 unique restaurant recommendations in the following JSON format. Respond with **only** the JSON array — no extra text, comments, or markdown.
-                
+                  
                 Format:
                 [
                   {
@@ -54,16 +54,16 @@ public class RestaurantService {
                     "justification": "A compelling explanation including restaurant name, rating, cuisine, distance, and score, written in a natural and persuasive tone.",
                     "score": 0.0 to 1.0,
                     "distance": float (in kilometers — use exactly the provided value)
-                  }
+                   }
                 ]
-                
+                 
                 For each restaurant, the 'justification' should:
                 - Start with the restaurant's name.
                 - Sound like a recommendation from a real expert.
                 - Include: cuisine type, overall rating, how close it is (distance), and score.
                 - Use engaging language that impresses the user.
                 - Keep it short and attractive — max 2 sentences.
-                
+                 
                 Use the following user preferences:
                 - Preferred Cuisine: %s
                 - Minimum Rating: %d
@@ -80,7 +80,7 @@ public class RestaurantService {
         ));
 
         for (Restaurant r : restaurants) {
-            int visitCount = userHistoryService.getRestaurantHistory(r.getId()).size();
+             int visitCount = userHistoryService.getRestaurantHistory(r.getId()).size();
             sb.append(String.format("""
                             - Name: %s
                               Cuisines: %s
@@ -93,14 +93,14 @@ public class RestaurantService {
                             """,
                     r.getName(),
                     r.getCuisines(),
-                    r.getRating().getOverallRating(),
+                     r.getRating().getOverallRating(),
                     r.getPriceRange(),
                     r.getDistance(),
                     r.getGeoLocation().getLatitude(),
                     r.getGeoLocation().getLongitude(),
-                    visitCount,
+                     visitCount,
                     r.getDescription()));
-        }
+          }
         return sb.toString();}
     private List<RecommendationDTO> parseAiRecommendations(String jsonText, List<Restaurant> contextRestaurants) {
         try {
@@ -111,7 +111,7 @@ public class RestaurantService {
             }
             if (jsonText.endsWith("```")) {
                 jsonText = jsonText.substring(0, jsonText.length() - 3);
-            }
+             }
             List<AiRecommendation> aiList = objectMapper.readValue(jsonText, new TypeReference<>() {
             });
             Set<String> seenNames = new HashSet<>();
@@ -139,5 +139,5 @@ public class RestaurantService {
             log.error("Failed to parse AI response", e);
             return Collections.emptyList();
         }
-     }
+      }
 }

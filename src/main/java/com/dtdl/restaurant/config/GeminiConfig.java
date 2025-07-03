@@ -20,10 +20,10 @@ public class GeminiConfig {
                 .resolver(DefaultAddressResolverGroup.INSTANCE);
 
         return WebClient.builder()
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .defaultHeader("x-goog-api-key", apiKey)
                 .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("x-goog-api-key", apiKey)  // ✅ Add the API key header
                 .build();
     }
 }
