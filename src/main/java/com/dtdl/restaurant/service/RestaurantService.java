@@ -1,118 +1,143 @@
 package com.dtdl.restaurant.service;
-
-import lombok.RequiredArgsConstructor;
-
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
+import com.dtdl.restaurant.model.AiRecommendation;
 import com.dtdl.restaurant.model.RecommendationDTO;
 import com.dtdl.restaurant.model.Restaurant;
-import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
+ import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
 import com.dtdl.restaurant.repository.RestaurantRepository;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+ @RequiredArgsConstructor
+@Slf4j
 public class RestaurantService {
 
-    private final RestaurantRepository restaurantRepository;
-    private final UserHistoryService userHistoryService;
-    private final OpenAIClient openAIClient;
-    private final GeminiClient geminiClient;
-
-    public List<RecommendationDTO> getTopRestaurantRecommendations(UserPreferenceRequestApiModel userPreferenceRequest, double userLatitude, double userLongitude) {
-        return restaurantRepository.findAll().stream()
-                .filter(r -> isCuisineMatch(r, userPreferenceRequest))
-                .filter(r -> isRatingAcceptable(r, userPreferenceRequest))
-                .filter(r -> isPriceWithinRange(r, userPreferenceRequest))
-                .map(r -> scoreAndRank(r, userPreferenceRequest, userLatitude, userLongitude))
-                .flatMap(Optional::stream)
-                .sorted(Comparator.comparingDouble(Scored::score).reversed())
-                .limit(5)
-                .map(scored -> toRecommendationDTO(scored, userPreferenceRequest))
+     private final RestaurantRepository restaurantRepository;
+     private final UserHistoryService userHistoryService;
+     private final GeminiClient geminiClient;
+     private final ObjectMapper objectMapper;
+    public List<RecommendationDTO> getTopRestaurantRecommendations(UserPreferenceRequestApiModel pref, double userLat, double userLon) {
+        List<Restaurant> nearbyRestaurants = restaurantRepository.findAll().stream()
+                .peek(r -> {
+                    double distance = DistanceCalculator.haversine(
+                            userLat, userLon,
+                            r.getGeoLocation().getLatitude(),
+                            r.getGeoLocation().getLongitude());
+                    r.setDistance(distance);
+                })
+                .filter(r -> r.getDistance() <= 80.46) // ~50 miles
                 .collect(Collectors.toList());
+
+        if (nearbyRestaurants.isEmpty()) return Collections.emptyList();
+
+        String prompt = buildPrompt(pref, nearbyRestaurants, userLat, userLon);
+        String jsonResponse = geminiClient.generateExplanation(prompt);
+
+        return parseAiRecommendations(jsonResponse, nearbyRestaurants);
     }
 
-    private boolean isCuisineMatch(Restaurant r, UserPreferenceRequestApiModel pref) {
-        String prefCuisine = pref.getPreferredCuisine();
-        if (prefCuisine == null || prefCuisine.isBlank() || r.getCuisines() == null) return false;
-
-        return r.getCuisines().stream()
-                .anyMatch(c -> c.trim().equalsIgnoreCase(prefCuisine.trim()));
-    }
-
-
-    private boolean isRatingAcceptable(Restaurant r, UserPreferenceRequestApiModel pref) {
-        return r.getRating() != null && r.getRating().getOverallRating() >= pref.getMinimumRating();
-    }
-
-    private boolean isPriceWithinRange(Restaurant r, UserPreferenceRequestApiModel pref) {
-        return r.getPriceRange() <= pref.getPreferredPriceRange();
-    }
-
-    private Optional<Scored> scoreAndRank(Restaurant r, UserPreferenceRequestApiModel pref, double userLat, double userLon) {
-        double distance = DistanceCalculator.haversine(
-                userLat, userLon,
-                r.getGeoLocation().getLatitude(),
-                r.getGeoLocation().getLongitude());
-
-        if (distance > pref.getMaxDistanceInKm()) return Optional.empty();
-
-        int visitCount = userHistoryService.getRestaurantHistory(r.getId()).size();
-
-        double score = computeScore(
-                r.getRating().getOverallRating(),
-                distance,
-                visitCount,
-                pref.isPrioritizeRating() ? 0.6 : 0.3,
-                pref.isPrioritizeRating() ? 0.2 : 0.4,
-                0.2
-        );
-
-        return Optional.of(new Scored(r, distance, score));
-    }
-
-    private RecommendationDTO toRecommendationDTO(Scored s, UserPreferenceRequestApiModel pref) {
-        String prompt = buildPrompt(s.restaurant(), s.distance(), pref);
-        String explanation = geminiClient.generateExplanation(prompt);
-        return new RecommendationDTO(
-                s.restaurant().getName(),
-                explanation,
-                s.score(),
-                s.distance());
-    }
-
-    private double computeScore(double rating, double distance, int visits,
-                                double wRating, double wDistance, double wPopularity) {
-        double normRating = rating / 5.0;
-        double normDistance = Math.max(0, 1 - distance / 10);
-        double normPopularity = Math.min(1, visits / 50.0);
-        return normRating * wRating + normDistance * wDistance + normPopularity * wPopularity;
-    }
-
-    private String buildPrompt(Restaurant r, double distance, UserPreferenceRequestApiModel pref) {
-        return String.format("""
-                Given the following restaurant and user preferences, generate a 1-line explanation why the restaurant is a top recommendation.
+    private String buildPrompt(UserPreferenceRequestApiModel pref, List<Restaurant> restaurants, double userLat, double userLon) {
+        StringBuilder sb = new StringBuilder("""
+                You are an expert restaurant recommendation AI.
                 
-                User Preferences:
+                Your job is to return exactly 10 unique restaurant recommendations in the following JSON format. Respond with **only** the JSON array — no extra text, comments, or markdown.
+                
+                Format:
+                [
+                  {
+                    "name": "Restaurant Name",
+                    "justification": "A compelling explanation including restaurant name, rating, cuisine, distance, and score, written in a natural and persuasive tone.",
+                    "score": 0.0 to 1.0,
+                    "distance": float (in kilometers — use exactly the provided value)
+                  }
+                ]
+                
+                For each restaurant, the 'justification' should:
+                - Start with the restaurant's name.
+                - Sound like a recommendation from a real expert.
+                - Include: cuisine type, overall rating, how close it is (distance), and score.
+                - Use engaging language that impresses the user.
+                - Keep it short and attractive — max 2 sentences.
+                
+                Use the following user preferences:
                 - Preferred Cuisine: %s
-                - Max Distance: %.1f km
-                - Min Rating: %d
+                - Minimum Rating: %d
+                - Preferred Price Range: %d
+                - User Location: (lat: %.6f, lon: %.6f)
                 
-                Restaurant:
-                - Name: %s
-                - Cuisine: %s
-                - Rating: %.1f stars
-                - Distance from user: %.1f km
-                - Description: %s
-                
-                Now generate the explanation.
-                """, pref.getPreferredCuisine(), pref.getMaxDistanceInKm(), pref.getMinimumRating(), r.getName(), r.getCuisines(), r.getRating().getOverallRating(), distance, r.getDescription());
-    }
+                Here is the restaurant list:
+                """.formatted(
+                pref.getPreferredCuisine(),
+                pref.getMinimumRating(),
+                pref.getPreferredPriceRange(),
+                userLat,
+                userLon
+        ));
 
-    private record Scored(Restaurant restaurant, double distance, double score) {
-    }
+        for (Restaurant r : restaurants) {
+            int visitCount = userHistoryService.getRestaurantHistory(r.getId()).size();
+            sb.append(String.format("""
+                            - Name: %s
+                              Cuisines: %s
+                              Rating: %.1f
+                              Price Range: %d
+                              Distance: %.2f km
+                              Coordinates: (lat: %.6f, lon: %.6f)
+                              Visit Count: %d
+                              Description: %s
+                            """,
+                    r.getName(),
+                    r.getCuisines(),
+                    r.getRating().getOverallRating(),
+                    r.getPriceRange(),
+                    r.getDistance(),
+                    r.getGeoLocation().getLatitude(),
+                    r.getGeoLocation().getLongitude(),
+                    visitCount,
+                    r.getDescription()));
+        }
+        return sb.toString();}
+    private List<RecommendationDTO> parseAiRecommendations(String jsonText, List<Restaurant> contextRestaurants) {
+        try {
+            log.debug("Raw Gemini response: {}", jsonText);
+            jsonText = jsonText.trim();
+            if (jsonText.startsWith("```json")) {
+                jsonText = jsonText.substring(7);
+            }
+            if (jsonText.endsWith("```")) {
+                jsonText = jsonText.substring(0, jsonText.length() - 3);
+            }
+            List<AiRecommendation> aiList = objectMapper.readValue(jsonText, new TypeReference<>() {
+            });
+            Set<String> seenNames = new HashSet<>();
+
+            return aiList.stream()
+                    .filter(ai -> seenNames.add(ai.getName().toLowerCase()))
+                    .map(ai -> {
+                        Restaurant matched = contextRestaurants.stream()
+                                .filter(r -> r.getName().equalsIgnoreCase(ai.getName()))
+                                .findFirst()
+                                .orElse(null);
+                        if (matched == null) return null;
+
+                        return new RecommendationDTO(
+                                matched.getName(),
+                                ai.getJustification(),
+                                ai.getScore(),
+                                matched.getDistance()
+                        );
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to parse AI response", e);
+            return Collections.emptyList();
+        }
+     }
 }
