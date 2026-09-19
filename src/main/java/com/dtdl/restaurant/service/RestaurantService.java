@@ -4,7 +4,7 @@ import com.dtdl.restaurant.entity.RestaurantEntity;
 import com.dtdl.restaurant.model.AiRecommendation;
 import com.dtdl.restaurant.model.RecommendationDTO;
 import com.dtdl.restaurant.model.request.UserPreferenceRequestApiModel;
-import com.dtdl.restaurant.repository.RestaurantRepository;
+import com.dtdl.restaurant.rag.RestaurantRetriever;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -20,9 +19,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Distance-based recommendation flow (Phase 3): filter the catalog by proximity,
- * ask the LLM to justify the closest matches. Retrieval is replaced by
- * pgvector similarity search in the RAG phase.
+ * Orchestrates the RAG recommendation flow: retrieve candidate restaurants
+ * (pgvector semantic search + geo/price/rating filters, with a distance-based
+ * fallback) and ask the LLM to justify them. Prompt handling and structured
+ * output are hardened in a later phase.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,24 +31,21 @@ public class RestaurantService {
 
     private static final int MAX_CANDIDATES = 10;
 
-    private final RestaurantRepository restaurantRepository;
+    private final RestaurantRetriever retriever;
     private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
 
     public List<RecommendationDTO> getTopRestaurantRecommendations(
             UserPreferenceRequestApiModel pref, double userLat, double userLon) {
 
-        List<RestaurantEntity> candidates = restaurantRepository.findAll().stream()
-                .peek(r -> r.setDistanceKm(
-                        DistanceCalculator.haversine(userLat, userLon, r.getLatitude(), r.getLongitude())))
-                .filter(r -> r.getDistanceKm() <= pref.getMaxDistanceInKm())
-                .sorted(Comparator.comparingDouble(RestaurantEntity::getDistanceKm))
-                .limit(MAX_CANDIDATES)
-                .collect(Collectors.toList());
+        RestaurantRetriever.RetrievalResult result =
+                retriever.retrieve(pref, userLat, userLon, MAX_CANDIDATES);
+        List<RestaurantEntity> candidates = result.restaurants();
 
         if (candidates.isEmpty()) {
             return Collections.emptyList();
         }
+        log.debug("Retrieved {} candidates (semantic={})", candidates.size(), result.semantic());
 
         String prompt = buildPrompt(pref, candidates, userLat, userLon);
         String jsonResponse = geminiClient.generateExplanation(prompt);
