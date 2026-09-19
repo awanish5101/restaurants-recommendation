@@ -3,6 +3,7 @@ package com.dtdl.restaurant.rag;
 import com.dtdl.restaurant.entity.RestaurantEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +24,9 @@ public class EmbeddingService {
         this.embeddingModel = embeddingModel;
     }
 
-    /** Embed a single query string; empty if the model call fails (e.g. no API key). */
+    /** Embed a single query string; empty if the model call fails (e.g. no API key).
+     *  Cached by query text so repeated identical queries don't re-hit the API. */
+    @Cacheable(cacheNames = "queryEmbeddings", unless = "#result == null || #result.isEmpty()")
     public Optional<float[]> embedQuery(String text) {
         try {
             return Optional.of(embeddingModel.embed(text));
