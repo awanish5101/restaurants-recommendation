@@ -1,10 +1,15 @@
 package com.dtdl.restaurant.repository;
 
-import java.util.List;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import com.dtdl.restaurant.model.UserHistory;
+import com.dtdl.restaurant.entity.UserHistoryEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-public interface UserHistoryRepository extends MongoRepository<UserHistory, String> {
-    List<UserHistory> findByUserId(String userId);
-    List<UserHistory> findByRestaurantId(Long restaurantId);
+import java.util.List;
+
+@Repository
+public interface UserHistoryRepository extends JpaRepository<UserHistoryEntity, Long> {
+
+    List<UserHistoryEntity> findByUserId(String userId);
+
+    List<UserHistoryEntity> findByRestaurantId(Long restaurantId);
 }
