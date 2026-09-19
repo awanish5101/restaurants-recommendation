@@ -8,7 +8,6 @@ import lombok.Data;
 public class RecommendationDTO {
     private String restaurantName;
     private String justification;
-    private double score;
     private double distance;
 
 }

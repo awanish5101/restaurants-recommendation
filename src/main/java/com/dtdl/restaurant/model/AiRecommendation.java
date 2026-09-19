@@ -6,7 +6,6 @@ import lombok.Data;
 public class AiRecommendation {
     private String name;
     private String justification;
-    private double score;
     private double distance;
     }
 

@@ -4,15 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class Location {
-
-    private String neighborhood;
+public class Coordinates {
 
     @JsonProperty("latitude")
-    private double lat;
+    private double latitude;
 
     @JsonProperty("longitude")
-    private double lon;
-
-    private Address address;
+    private double longitude;
 }

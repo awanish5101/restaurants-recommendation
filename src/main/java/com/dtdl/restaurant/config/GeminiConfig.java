@@ -11,19 +11,21 @@ import reactor.netty.http.client.HttpClient;
 @Configuration
 public class GeminiConfig {
 
-    @Value("${gemini.api.key}")
-    private String apiKey;
+    @Value("${gemini.api.url}")
+    private String apiUrl;
 
     @Bean
     public WebClient geminiWebClient() {
+
         HttpClient httpClient = HttpClient.create()
                 .resolver(DefaultAddressResolverGroup.INSTANCE);
 
         return WebClient.builder()
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(apiUrl)
                 .defaultHeader("Content-Type", "application/json")
-                .defaultHeader("x-goog-api-key", apiKey)  // ✅ Add the API key header
+                .clientConnector(
+                        new ReactorClientHttpConnector(httpClient)
+                )
                 .build();
     }
 }
