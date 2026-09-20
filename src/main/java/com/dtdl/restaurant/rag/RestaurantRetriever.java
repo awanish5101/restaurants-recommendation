@@ -51,8 +51,12 @@ public class RestaurantRetriever {
 
     public RetrievalResult retrieve(UserPreferenceRequestApiModel pref,
                                     double lat, double lon, int k) {
-        Optional<float[]> queryVector = embeddingService.embedQuery(buildQueryText(pref));
-        boolean canSemantic = queryVector.isPresent() && restaurantRepository.countWithEmbedding() > 0;
+        // Only embed the query if there is something to semantically match against.
+        boolean hasEmbeddings = restaurantRepository.countWithEmbedding() > 0;
+        Optional<float[]> queryVector = hasEmbeddings
+                ? embeddingService.embedQuery(buildQueryText(pref))
+                : Optional.empty();
+        boolean canSemantic = queryVector.isPresent();
 
         List<ScoredId> hits = canSemantic
                 ? vectorSearch(queryVector.get(), pref, lat, lon, k * 3)

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, portfolio-upgrade ]
+  pull_request:
+    branches: [ main, master, portfolio-upgrade ]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: restaurant
+          POSTGRES_PASSWORD: restaurant
+          POSTGRES_DB: restaurantdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restaurant -d restaurantdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Grant execute permission for mvnw
+        run: chmod +x mvnw
+
+      - name: Build and Test with Maven
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/restaurantdb
+          SPRING_DATASOURCE_USERNAME: restaurant
+          SPRING_DATASOURCE_PASSWORD: restaurant
+        run: ./mvnw clean verify
+
+      - name: Build Docker image
+        run: docker build -t restaurant-system:ci .
