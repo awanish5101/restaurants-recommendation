@@ -279,7 +279,7 @@ curl -X POST "http://localhost:8080/history/rate?userId=user_42&restaurantId=175
 ## Testing & Quality Assurance
 
 ```bash
-# Run full Maven test suite (Unit, Mockito resilience, Slice Integration tests)
+# Run full Maven test suite (unit, resilience, and integration tests)
 mvn clean verify
 ```
 
