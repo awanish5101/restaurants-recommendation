@@ -1,143 +1,247 @@
-# 🍽️ AI Restaurant Recommendation Engine
+# 🍽️ AI-Powered Restaurant Recommendation & Semantic Search Engine
 
 [![CI](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-blue.svg)](https://github.com/pgvector/pgvector)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Google Gemini](https://img.shields.io/badge/LLM-Gemini%202.5%20Flash-4285F4.svg)](https://ai.google.dev/)
+[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit%20%2B%20Folium-FF4B4B.svg)](https://streamlit.io/)
+[![Docker](https://img.shields.io/badge/Container-Docker%20Compose-2496ED.svg)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A production-grade, RAG-powered restaurant recommendation engine combining **PostgreSQL + pgvector** semantic retrieval, **Spring Boot 3**, **Spring AI / Google Gemini**, and an interactive **Streamlit** geospatial frontend.
+An enterprise-grade, full-stack **Retrieval-Augmented Generation (RAG)** restaurant recommendation platform. It combines **PostgreSQL + pgvector** (HNSW cosine similarity), **Spring Boot 3**, **Spring AI / Google Gemini**, and an interactive **Streamlit geospatial UI** with Folium mapping.
 
-Designed with enterprise resilience principles: hybrid spatial + vector filtering, structured LLM rationale generation, anti-hallucination verification, deterministic fallback degradation, query embedding caching, and automated benchmark evaluation.
+Engineered with production resilience: hybrid spatial + vector filtering, structured LLM rationale generation, anti-hallucination verification, deterministic fallback degradation, query embedding caching, and automated benchmark evaluation.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🎯 Recruiter & Engineering Highlights
+
+| Pillar | Engineering Decisions & Implementation |
+| :--- | :--- |
+| **Full-Stack AI Architecture** | Responsive **Streamlit** dashboard with interactive geospatial Folium maps, distance radius visualizer, and diner visit/rating telemetry wired to a **Spring Boot 3** REST backend. |
+| **Hybrid Spatial + Vector Retrieval** | Co-locates relational restaurant metadata with 768-dimensional vector embeddings in **PostgreSQL + pgvector**, evaluating HNSW cosine similarity and Haversine distance constraints in a single query path. |
+| **Anti-Hallucination Guardrails** | Candidate pool is strictly fetched from validated database records. LLM prompts enforce structured rationale schemas, with runtime validation ensuring rationales only reference verified candidates. |
+| **Deterministic Fallback Degradation** | Zero downtime: If Gemini API quota is throttled, network drops, or no API key is supplied, the service gracefully degrades to a deterministic, rule-based scoring engine (100% SLA). |
+| **Embedding Caching & Latency** | Caffeine L1 in-memory caching eliminates duplicate vectorization calls, reducing median P50 query latency to **~16 ms**. |
+| **Observability & MLOps** | Automated RAG benchmark evaluation suite (`eval_rag.py`), OpenAPI 3 / Swagger UI documentation, Spring Boot Actuator health checks, and a live GitHub Actions CI pipeline. |
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["🖥️ Frontend & Client Layer"]
+        UI["Streamlit Geospatial UI<br/>(Folium Map + Radius + Filters)"]
+        Curl["External REST Clients / Swagger UI"]
+    end
+
+    subgraph ServiceLayer["⚙️ Spring Boot 3 Backend Service"]
+        Controller["RestaurantController<br/>POST /api/restaurants/recommend"]
+        History["HistoryController<br/>POST /history/visit & /history/rate"]
+        Service["RestaurantService<br/>(Hybrid Orchestration)"]
+        Cache["Caffeine Cache<br/>(Query Embeddings L1)"]
+        Fallback["RuleBasedRecommender<br/>(Zero-Downtime Fallback)"]
+    end
+
+    subgraph AI["🧠 Generative AI & Vector Layer"]
+        Gemini["Google Gemini Client<br/>(gemini-2.5-flash)"]
+        Embeddings["Embedding API<br/>(text-embedding-004)"]
+    end
+
+    subgraph Data["💾 Persistence Layer (PostgreSQL 16)"]
+        DB[("PostgreSQL + pgvector<br/>- HNSW Cosine Index<br/>- Haversine Distance Filters<br/>- Flyway Schema Migrations")]
+    end
+
+    UI -->|"HTTP / JSON"| Controller
+    Curl -->|"HTTP / JSON"| Controller
+    UI -->|"HTTP / JSON"| History
+    Controller --> Service
+    History --> DB
+
+    Service --> Cache
+    Cache -.->|"Cache Miss"| Embeddings
+    Service -->|"Vector + Spatial Query"| DB
+    Service -->|"Candidate Context"| Gemini
+    Gemini -.->|"Quota / Network Failure"| Fallback
+    Fallback --> Service
+    Service -->|"Enriched DTO with AI Justification"| Controller
+```
+
+---
+
+## 🔄 RAG Request Lifecycle & Guardrails
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Diner / Client
+    participant UI as Streamlit UI
+    participant API as Spring Boot API
+    participant Cache as Caffeine Cache
+    participant LLM as Google Gemini
+    participant DB as PostgreSQL + pgvector
+
+    User->>UI: Inputs vibe ("romantic Italian patio") & filters
+    UI->>API: POST /api/restaurants/recommend?lat=...&lon=...
+    API->>Cache: Check query embedding cache
+    alt Cache Miss
+        API->>LLM: Generate query vector (768-dim)
+        LLM-->>API: Return embedding vector
+        API->>Cache: Store vector in L1 cache
+    else Cache Hit
+        Cache-->>API: Return cached embedding vector
+    end
+
+    API->>DB: Execute hybrid HNSW cosine distance + Haversine spatial query
+    DB-->>API: Top candidate restaurants within radius & budget
+    
+    alt Gemini LLM Available
+        API->>LLM: Prompt with candidates & user preferences
+        LLM-->>API: Grounded JSON rationales
+    else LLM Unavailable / Quota Throttled
+        API->>API: Activate RuleBasedRecommender fallback
+    end
+
+    API->>API: Validate candidates (anti-hallucination check) & assemble DTOs
+    API-->>UI: Return ranked recommendations with grounded justifications
+    UI-->>User: Render interactive Folium map, pins & recommendation cards
+```
+
+---
+
+## 📊 RAG Benchmark & Quantitative Evaluation
+
+The system includes an automated quantitative evaluation suite (`scripts/eval_rag.py`) verifying constraint adherence, response groundness, and latency percentiles across distinct user personas:
+
+| Metric | Benchmark Target | Production Result | Recruiter Takeaway |
+| :--- | :---: | :---: | :--- |
+| **API Availability / Success** | 100% | **100.0%** | Zero 5xx errors; handled cleanly across all personas. |
+| **Spatial Distance Constraint** | 100% | **100.0%** | Strict spatial validation; no restaurant outside radius returned. |
+| **Rating Quality Adherence** | 100% | **100.0%** | Relational SQL predicates honor minimum rating thresholds. |
+| **Rationale Groundedness** | > 95% | **100.0%** | Zero hallucinations; justifications anchor to database facts. |
+| **P50 Query Latency** | < 1500 ms | **16.3 ms** | Sub-20ms response time powered by pgvector HNSW indexing. |
+| **P90 Query Latency** | < 3000 ms | **37.3 ms** | Highly predictable latency under varied query complexities. |
+
+*Full benchmark breakdown and test methodology available in [docs/rag_eval_report.md](docs/rag_eval_report.md).*
+
+---
+
+## 🗂️ Project Structure
 
 ```
-                      ┌─────────────────────────────────┐
-                      │    Streamlit Geospatial Demo    │
-                      │       (Folium Map + KPIs)       │
-                      └────────────────┬────────────────┘
-                                       │ HTTP / REST
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │   Spring Boot 3 REST Service    │
-                      │  (OpenAPI 3 / Actuator / Cache) │
-                      └────────┬───────────────┬────────┘
-                               │               │
-            Hybrid Semantic &  │               │ Structured Prompts &
-            Spatial Retrieval  │               │ Grounded Rationales
-                               ▼               ▼
-         ┌───────────────────────────┐   ┌───────────────────────────┐
-         │   PostgreSQL + pgvector   │   │     Google Gemini LLM     │
-         │ - HNSW Cosine Similarity  │   │  (gemini-2.5-flash /      │
-         │ - Haversine Distance      │   │   Rule-Based Fallback)    │
-         │ - Rating & Price Filters  │   └───────────────────────────┘
-         └───────────────────────────┘
+restaurants-recommendation/
+├── .github/workflows/
+│   └── ci.yml                 # GitHub Actions CI (JDK 21, pgvector service, Maven, Docker)
+├── demo/
+│   ├── app.py                 # Streamlit geospatial UI (Folium map, cards, KPIs, visit log)
+│   └── requirements.txt       # Streamlit & Python dependencies
+├── docs/
+│   └── rag_eval_report.md     # Detailed empirical RAG evaluation benchmark report
+├── scripts/
+│   ├── eval_rag.py            # Automated RAG evaluation benchmark harness
+│   ├── sample_data.py         # Geo-distributed restaurant catalog generator (1,500 records)
+│   ├── start_local.sh         # All-in-one local environment bootstrap script
+│   ├── stop_local.sh          # Graceful shutdown utility
+│   └── run_demo.sh            # Streamlit UI runner script
+├── src/
+│   ├── main/
+│   │   ├── java/com/dtdl/restaurant/
+│   │   │   ├── controller/    # REST APIs (Recommendation, History, OpenAPI annotations)
+│   │   │   ├── dto/           # Request/Response models with validation (@NotNull, @Min)
+│   │   │   ├── entity/        # JPA Entities (Restaurant with pgvector vector type)
+│   │   │   ├── exception/     # Global exception handling (@ControllerAdvice)
+│   │   │   ├── rag/           # EmbeddingService, GeminiClient, RuleBasedRecommender
+│   │   │   ├── repository/    # Spring Data JPA + native pgvector cosine distance queries
+│   │   │   └── service/       # Business logic, caching, and fallback orchestration
+│   │   └── resources/
+│   │       ├── db/migration/  # Flyway schema versioning (V1 schema, V2 seed data)
+│   │       └── application.yml# Spring configuration (pgvector, Gemini, Caffeine)
+│   └── test/                  # Unit tests, Mockito resilience tests, slice integration tests
+├── docker-compose.yml         # Multi-container orchestration (pgvector + Spring Boot)
+├── Dockerfile                 # Multi-stage container build
+├── pom.xml                    # Maven build file with Spring Boot 3.5 & Spring AI
+└── README.md                  # Comprehensive technical documentation
 ```
 
-### Retrieval & Generation Pipeline
-1. **Semantic Query Embedding**: The user's dining preferences and vibe (e.g., *"romantic Italian patio with handmade pasta"*) are vectorized via Gemini embeddings (`text-embedding-004` / `gemini-embedding-001`, 768 dimensions) with Caffeine in-memory caching.
-2. **Hybrid pgvector Retrieval**: Candidate restaurants are retrieved via HNSW vector index cosine similarity combined with relational bounding predicates (haversine spatial distance, minimum rating, and price tier).
-3. **Structured Justification**: Gemini generates concise, personalized dining rationales anchored strictly in candidate metadata.
-4. **Anti-Hallucination & Fallback Guardrails**: Recommendations are strictly mapped against verified database candidates. If the LLM is unreachable, quota-throttled, or offline, the system seamlessly triggers deterministic, rule-based rationales without downtime or 5xx errors.
-
 ---
 
-## ✨ Key Features
-
-- **Hybrid Spatial + Vector Retrieval**: Intersects vector similarity with spatial constraints ($\le$ max distance in km) and relational filters in a single query path.
-- **Resilient Fallback Mode**: Works 100% offline out-of-the-box using deterministic rule-based rationales when no Gemini API key is supplied.
-- **Query Embedding Caching**: Caffeine in-memory cache eliminates redundant API roundtrips for repeated searches.
-- **Interactive Geospatial UI**: Streamlit web application featuring Folium interactive maps, search radius visualizer, ranked restaurant cards, KPI metrics, and diner visit/rating logs.
-- **Automated RAG Evaluation Suite**: End-to-end benchmark script (`scripts/eval_rag.py`) measuring distance adherence, rating constraints, rationale groundedness, and latency percentiles.
-- **Production Observability & Docs**: OpenAPI 3 / Swagger UI at `/swagger-ui/index.html` and health probes via Spring Boot Actuator at `/actuator/health`.
-- **Docker & CI Ready**: Full `docker-compose.yml` setup and GitHub Actions CI workflow with a live pgvector service container.
-
----
-
-## 📊 RAG Benchmark & Evaluation Results
-
-Evaluated across diverse query personas using `scripts/eval_rag.py`:
-
-| Quality Metric | Benchmark Target | Achieved | Status |
-| :--- | :---: | :---: | :---: |
-| **API Success Rate** | 100% | **100.0%** | ✅ PASS |
-| **Distance Constraint Adherence** | 100% | **100.0%** | ✅ PASS |
-| **Rating Quality Adherence** | 100% | **100.0%** | ✅ PASS |
-| **Rationale Groundedness / Factuality** | > 95% | **100.0%** | ✅ PASS |
-| **P50 Query Latency** | < 1500 ms | **16.3 ms** | ✅ PASS |
-| **P90 Query Latency** | < 3000 ms | **37.3 ms** | ✅ PASS |
-
-*Detailed benchmark metrics and sample query breakdowns are available in [docs/rag_eval_report.md](docs/rag_eval_report.md).*
-
----
-
-## 🚀 Quickstart
+## 🚀 Quickstart Guide
 
 ### Prerequisites
-- Java 21+ & Maven 3.9+ (or Docker & Docker Compose)
-- PostgreSQL 16 with the `pgvector` extension enabled
-- Python 3.10+ (for the Streamlit demo and eval suite)
+- **Java 21+** & **Maven 3.9+** (or Docker & Docker Compose)
+- **PostgreSQL 16** with `pgvector` extension
+- **Python 3.10+** (for Streamlit demo and evaluation harness)
 
-### 1. Run with Docker Compose (Recommended)
+---
+
+### Option 1: Run with Docker Compose (Fastest)
 
 ```bash
-# Clone the repository
+# 1. Clone repository
 git clone https://github.com/awanish5101/restaurants-recommendation.git
-cd restaurants-recommendation/restaurantsystem
+cd restaurants-recommendation
 
-# (Optional) Provide Gemini API key in .env or shell
+# 2. (Optional) Set your Gemini API Key (runs in rule-based fallback if unset)
 export GEMINI_API_KEY="your-gemini-api-key"
 
-# Launch Postgres+pgvector and Spring Boot service
+# 3. Launch PostgreSQL (pgvector) and Spring Boot service
 docker compose up --build
 ```
 
-The service will start at `http://localhost:8080`.
+The backend is live at `http://localhost:8080`.
 
-### 2. Run Locally with Maven
+---
+
+### Option 2: Local All-in-One Startup Script
 
 ```bash
-# Ensure PostgreSQL is running on port 5432
-mvn clean package -DskipTests
-mvn spring-boot:run
+# Automatically bootstraps Postgres, runs Flyway migrations, and launches backend
+./scripts/start_local.sh
 ```
 
-The database schema is automatically migrated using Flyway, and the sample catalog of 1,500 restaurants is seeded on first boot.
+To stop all local services:
+```bash
+./scripts/stop_local.sh
+```
 
-### 3. Launch the Streamlit Interactive UI
+---
+
+### Launch the Streamlit Geospatial Frontend
 
 ```bash
-# In a separate terminal
+# In a new terminal window:
 ./scripts/run_demo.sh
-# Or manually:
+
+# Or directly via Python:
 pip install -r demo/requirements.txt
 streamlit run demo/app.py
 ```
 
-Open your browser at `http://localhost:8501`.
+Open **`http://localhost:8501`** in your browser to interact with the map, adjust spatial search radii, filter cuisines, and review AI-generated rationales.
 
 ---
 
-## 🔌 API Reference
+## 🔌 API Reference & Interactive Docs
 
-### 1. Recommend Restaurants
+### 1. Restaurant Recommendation
 `POST /api/restaurants/recommend?latitude={lat}&longitude={lon}`
 
-**Request Body:**
-```json
-{
-  "preferredCuisine": "authentic Japanese sushi and ramen",
-  "maxDistanceInKm": 10.0,
-  "prioritizeRating": true,
-  "preferredPriceRange": 2,
-  "minimumRating": 4
-}
+**Sample Request:**
+```bash
+curl -X POST "http://localhost:8080/api/restaurants/recommend?latitude=40.7580&longitude=-73.9855" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "preferredCuisine": "authentic Japanese sushi and ramen",
+    "maxDistanceInKm": 5.0,
+    "prioritizeRating": true,
+    "preferredPriceRange": 2,
+    "minimumRating": 4
+  }'
 ```
 
-**Response (HTTP 200):**
+**Sample Response (HTTP 200 OK):**
 ```json
 [
   {
@@ -154,60 +258,46 @@ Open your browser at `http://localhost:8501`.
 ]
 ```
 
-### 2. Log Diner Visit
-`POST /history/visit?userId={userId}&restaurantId={restaurantId}`
+### 2. Diner Telemetry (Visits & Ratings)
+```bash
+# Log a diner visit
+curl -X POST "http://localhost:8080/history/visit?userId=user_42&restaurantId=175163"
 
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Visit logged."
-}
+# Submit a diner rating
+curl -X POST "http://localhost:8080/history/rate?userId=user_42&restaurantId=175163&rating=5.0"
 ```
 
-### 3. Log Diner Rating
-`POST /history/rate?userId={userId}&restaurantId={restaurantId}&rating=4.5`
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Rating logged."
-}
-```
-
-### 4. Interactive Documentation
+### 3. Interactive Documentation & Probes
 - **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
-- **OpenAPI JSON Spec**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-- **Actuator Health Check**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+- **OpenAPI 3 JSON Spec**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- **Actuator Health Probe**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
 
 ---
 
-## 🧪 Testing & Evaluation
+## 🧪 Testing & Quality Assurance
 
-### Run Test Suite
 ```bash
+# Run full Maven test suite (Unit, Mockito resilience, Slice Integration tests)
 mvn clean verify
 ```
-Runs unit tests, Mockito resilience tests, and full slice integration tests with embedded Flyway migrations.
 
-### Run RAG Evaluation Benchmark
 ```bash
+# Run automated RAG evaluation benchmark
 python3 scripts/eval_rag.py --url http://localhost:8080 --output docs/rag_eval_report.md
 ```
 
 ---
 
-## ⚙️ Configuration Reference
+## ⚙️ Environment Configuration
 
-| Environment Variable | Description | Default |
+| Variable | Description | Default |
 | :--- | :--- | :--- |
-| `SPRING_DATASOURCE_URL` | JDBC URL for PostgreSQL | `jdbc:postgresql://localhost:5432/restaurantdb` |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC Connection URL | `jdbc:postgresql://localhost:5432/restaurantdb` |
 | `SPRING_DATASOURCE_USERNAME` | Database username | `restaurant` |
 | `SPRING_DATASOURCE_PASSWORD` | Database password | `restaurant` |
 | `GEMINI_API_KEY` | Google Gemini API Key | *(empty - enables rule-based fallback)* |
-| `APP_INGESTION_ENABLED` | Ingest bundled sample data on startup | `true` |
-| `APP_EMBEDDING_ENABLED` | Run background embedding backfill | `true` |
+| `APP_INGESTION_ENABLED` | Seed bundled catalog on first boot | `true` |
+| `APP_EMBEDDING_ENABLED` | Asynchronous embedding generation backfill | `true` |
 
 ---
 
