@@ -1,6 +1,6 @@
 # 🍽️ AI Restaurant Recommendation Engine
 
-[![CI](https://github.com/Manishchaurasia536/restaurant_ai_poc/actions/workflows/ci.yml/badge.svg)](https://github.com/Manishchaurasia536/restaurant_ai_poc/actions/workflows/ci.yml)
+[![CI](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-blue.svg)](https://github.com/pgvector/pgvector)
@@ -85,8 +85,8 @@ Evaluated across diverse query personas using `scripts/eval_rag.py`:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Manishchaurasia536/restaurant_ai_poc.git
-cd restaurant_ai_poc/restaurantsystem
+git clone https://github.com/awanish5101/restaurants-recommendation.git
+cd restaurants-recommendation/restaurantsystem
 
 # (Optional) Provide Gemini API key in .env or shell
 export GEMINI_API_KEY="your-gemini-api-key"
