@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * End-to-end test over a real Postgres+pgvector: Flyway schema, JPA persistence,
- * the retriever's distance path, the controller, and validation — with embeddings
+ * the retriever's distance path, the controller, and validation - with embeddings
  * and the LLM disabled, so it exercises the rule-based path with no external calls.
  * Runs locally against localhost:5432 and in CI against the pgvector service container.
  */

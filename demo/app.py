@@ -5,8 +5,7 @@ import folium
 from streamlit_folium import st_folium
 
 st.set_page_config(
-    page_title="🍽️ AI Restaurant Recommender",
-    page_icon="🍽️",
+    page_title="Restaurant Recommender",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -82,7 +81,7 @@ st.markdown("""
 # ----------------- SIDEBAR -----------------
 with st.sidebar:
     st.image("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&auto=format&fit=crop&q=60", use_container_width=True)
-    st.title("⚙️ Recommender Config")
+    st.title("Recommender Config")
 
     backend_url = st.text_input("Backend Base URL", value="http://localhost:8080", help="Spring Boot API base URL")
 
@@ -92,14 +91,14 @@ with st.sidebar:
         r = requests.get(f"{backend_url}/actuator/health", timeout=2)
         if r.status_code == 200 and r.json().get("status") == "UP":
             is_healthy = True
-            st.success("🟢 Backend Connected (Healthy)")
+            st.success("Backend Connected (Healthy)")
         else:
-            st.warning(f"🟡 Backend Responded: {r.status_code}")
+            st.warning(f"Backend Responded: {r.status_code}")
     except Exception:
-        st.error("🔴 Backend Offline (Start Spring Boot on port 8080)")
+        st.error("Backend Offline (Start Spring Boot on port 8080)")
 
     st.markdown("---")
-    st.subheader("📍 Diner Location")
+    st.subheader("Diner Location")
     
     preset = st.selectbox(
         "Location Presets",
@@ -120,7 +119,7 @@ with st.sidebar:
         lon = st.number_input("Longitude", value=-73.9855, format="%.5f")
 
     st.markdown("---")
-    st.subheader("🎯 Diner Preferences")
+    st.subheader("Diner Preferences")
 
     vibe_quickpicks = [
         "Cozy Italian pasta & wine",
@@ -145,14 +144,14 @@ with st.sidebar:
     prioritize_rating = st.checkbox("Prioritize Rating Weight", value=True)
 
     st.markdown("---")
-    st.markdown("### 📚 Developer Links")
+    st.markdown("### Developer Links")
     st.markdown(f"- [Swagger UI Documentation]({backend_url}/swagger-ui/index.html)")
     st.markdown(f"- [Spring Boot Actuator Health]({backend_url}/actuator/health)")
     st.markdown(f"- [OpenAPI JSON Spec]({backend_url}/v3/api-docs)")
 
 
 # ----------------- MAIN UI -----------------
-st.markdown('<div class="main-header">🍽️ AI Restaurant Recommender</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Restaurant Recommendation Engine</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-header"><b>Architecture:</b> Spring Boot 3 + PostgreSQL/pgvector HNSW Cosine Search + Spring AI / Gemini LLM Justifications + Graceful Rule Fallback</div>',
     unsafe_allow_html=True
@@ -160,7 +159,7 @@ st.markdown(
 
 col_btn, col_info = st.columns([1, 4])
 with col_btn:
-    search_clicked = st.button("🔍 Find Recommendations", type="primary", use_container_width=True)
+    search_clicked = st.button("Find Recommendations", type="primary", use_container_width=True)
 
 if "results" not in st.session_state:
     st.session_state["results"] = None
@@ -171,7 +170,7 @@ if "query_meta" not in st.session_state:
 
 if search_clicked:
     if not is_healthy:
-        st.error("⚠️ Backend is not reachable. Please start the Spring Boot app.")
+        st.error("Backend is not reachable. Please start the Spring Boot app.")
     else:
         req_body = {
             "preferredCuisine": cuisine_input,
@@ -210,7 +209,7 @@ meta = st.session_state.get("query_meta")
 
 if results is not None:
     if len(results) == 0:
-        st.info("ℹ️ No restaurants matched your constraints. Try expanding your search distance or relaxing the minimum rating.")
+        st.info("No restaurants matched your constraints. Try expanding your search distance or relaxing the minimum rating.")
     else:
         # Top KPI Metrics Row
         m1, m2, m3, m4 = st.columns(4)
@@ -218,11 +217,11 @@ if results is not None:
         closest_dist = min((r.get("distance") or r.get("distanceInKm") or 0.0) for r in results)
         m2.metric("Closest Distance", f"{closest_dist:.2f} km")
         top_rating = max((r.get("overallRating") or 0.0) for r in results)
-        m3.metric("Top Rating", f"⭐ {top_rating:.1f}")
+        m3.metric("Top Rating", f"{top_rating:.1f} / 5.0")
         m4.metric("RAG Query Latency", f"{latency_ms:.1f} ms")
 
         # Map & List Layout
-        tab_list, tab_map, tab_diag = st.tabs(["📋 Recommended Restaurants", "🗺️ Geographic Map", "🔍 System Diagnostics"])
+        tab_list, tab_map, tab_diag = st.tabs(["Recommended Restaurants", "Geographic Map", "System Diagnostics"])
 
         with tab_map:
             # Create Folium Map
@@ -262,7 +261,7 @@ if results is not None:
                     popup_html = f"""
                     <div style="font-family: sans-serif; min-width: 180px;">
                         <b style="font-size: 1.05rem;">#{rank} {name}</b><br/>
-                        <span>⭐ {rating} | 📍 {dist_val:.2f} km</span><br/>
+                        <span>Rating: {rating} | Distance: {dist_val:.2f} km</span><br/>
                         <span style="color: #666; font-size: 0.85rem;">{cuisines}</span><br/><br/>
                         <i>"{rationale}"</i>
                     </div>
@@ -270,7 +269,7 @@ if results is not None:
                     folium.Marker(
                         [r_lat, r_lon],
                         popup=folium.Popup(popup_html, max_width=300),
-                        tooltip=f"#{rank} {name} (⭐ {rating})",
+                        tooltip=f"#{rank} {name} ({rating})",
                         icon=folium.Icon(color="red", icon="cutlery", prefix="fa")
                     ).add_to(m)
 
@@ -302,12 +301,12 @@ if results is not None:
                             </div>
                         </div>
                         <div style="text-align: right;">
-                            <span style="font-size: 1.1rem; font-weight: 700; color: #d69e2e;">⭐ {rating:.1f}</span><br/>
-                            <span style="color: #718096; font-size: 0.85rem;">📍 {distance:.2f} km away</span>
+                            <span style="font-size: 1.1rem; font-weight: 700; color: #2d3748;">Rating: {rating:.1f}</span><br/>
+                            <span style="color: #718096; font-size: 0.85rem;">{distance:.2f} km away</span>
                         </div>
                     </div>
                     <div class="rationale-box">
-                        <b>🤖 AI Recommendation Rationale:</b> {justification}
+                        <b>Recommendation Rationale:</b> {justification}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -315,11 +314,11 @@ if results is not None:
                 # Action row for logging visit and ratings
                 col_v, col_r, col_s = st.columns([1.5, 1.5, 4])
                 with col_v:
-                    if st.button(f"👣 Log Visit", key=f"visit_{r_id}"):
+                    if st.button(f"Log Visit", key=f"visit_{r_id}"):
                         try:
                             v_resp = requests.post(f"{backend_url}/history/visit?userId=demo_user&restaurantId={r_id}")
                             if v_resp.status_code == 200:
-                                st.toast(f"✅ Visit logged for {name}!", icon="🎉")
+                                st.toast(f"Visit logged for {name}")
                             else:
                                 st.error(f"Error {v_resp.status_code}")
                         except Exception as ex:
@@ -328,11 +327,11 @@ if results is not None:
                 with col_r:
                     user_score = st.selectbox("Rating", [5.0, 4.0, 3.0, 2.0, 1.0], key=f"score_{r_id}", label_visibility="collapsed")
                 with col_s:
-                    if st.button(f"⭐ Submit Rating", key=f"rate_{r_id}"):
+                    if st.button(f"Submit Rating", key=f"rate_{r_id}"):
                         try:
                             r_resp = requests.post(f"{backend_url}/history/rate?userId=demo_user&restaurantId={r_id}&rating={user_score}")
                             if r_resp.status_code == 200:
-                                st.toast(f"✅ Rated {name} {user_score} stars!", icon="🌟")
+                                st.toast(f"Rated {name} {user_score} stars")
                             else:
                                 st.error(f"Error {r_resp.status_code}")
                         except Exception as ex:
@@ -354,4 +353,4 @@ if results is not None:
                 }
             })
 else:
-    st.info("👈 Set your preferences in the sidebar and click **'Find Recommendations'** to begin exploring!")
+    st.info("Set your preferences in the sidebar and click **'Find Recommendations'** to begin exploring.")

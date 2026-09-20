@@ -312,7 +312,7 @@ def compute_metrics(results: List[QueryEvalResult]) -> Dict[str, Any]:
 
 def generate_markdown_report(results: List[QueryEvalResult], metrics: Dict[str, Any]) -> str:
     lines = [
-        "# 📊 RAG & Recommendation System Evaluation Report",
+        "# RAG & Recommendation System Evaluation Report",
         "",
         f"**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}  ",
         "**Target Architecture:** Spring Boot 3 + PostgreSQL/pgvector (Cosine Similarity) + Spring AI / Gemini LLM + Rule-Based Fallback  ",
@@ -323,13 +323,13 @@ def generate_markdown_report(results: List[QueryEvalResult], metrics: Dict[str, 
         "",
         "| Quality Metric | Target | Achieved | Status |",
         "| :--- | :---: | :---: | :---: |",
-        f"| **API Success Rate** | 100% | {metrics['success_rate_pct']:.1f}% | {'✅ PASS' if metrics['success_rate_pct'] == 100 else '⚠️ WARN'} |",
-        f"| **Distance Constraint Adherence** | 100% | {metrics['distance_adherence_pct']:.1f}% | {'✅ PASS' if metrics['distance_adherence_pct'] >= 99 else '❌ FAIL'} |",
-        f"| **Rating Quality Adherence** | 100% | {metrics['rating_adherence_pct']:.1f}% | {'✅ PASS' if metrics['rating_adherence_pct'] >= 99 else '❌ FAIL'} |",
-        f"| **Rationale Groundedness / Factuality** | > 95% | {metrics['rationale_groundedness_pct']:.1f}% | {'✅ PASS' if metrics['rationale_groundedness_pct'] >= 95 else '⚠️ WARN'} |",
-        f"| **Semantic Match Relevance** | > 75% | {metrics['semantic_relevance_pct']:.1f}% | {'✅ PASS' if metrics['semantic_relevance_pct'] >= 70 else '⚠️ WARN'} |",
-        f"| **P50 Query Latency** | < 1500 ms | {metrics['latency_p50_ms']:.1f} ms | {'✅ PASS' if metrics['latency_p50_ms'] < 1500 else '⚠️ SLOW'} |",
-        f"| **P90 Query Latency** | < 3000 ms | {metrics['latency_p90_ms']:.1f} ms | {'✅ PASS' if metrics['latency_p90_ms'] < 3000 else '⚠️ SLOW'} |",
+        f"| **API Success Rate** | 100% | {metrics['success_rate_pct']:.1f}% | {'PASS' if metrics['success_rate_pct'] == 100 else 'WARN'} |",
+        f"| **Distance Constraint Adherence** | 100% | {metrics['distance_adherence_pct']:.1f}% | {'PASS' if metrics['distance_adherence_pct'] >= 99 else 'FAIL'} |",
+        f"| **Rating Quality Adherence** | 100% | {metrics['rating_adherence_pct']:.1f}% | {'PASS' if metrics['rating_adherence_pct'] >= 99 else 'FAIL'} |",
+        f"| **Rationale Groundedness / Factuality** | > 95% | {metrics['rationale_groundedness_pct']:.1f}% | {'PASS' if metrics['rationale_groundedness_pct'] >= 95 else 'WARN'} |",
+        f"| **Semantic Match Relevance** | > 75% | {metrics['semantic_relevance_pct']:.1f}% | {'PASS' if metrics['semantic_relevance_pct'] >= 70 else 'WARN'} |",
+        f"| **P50 Query Latency** | < 1500 ms | {metrics['latency_p50_ms']:.1f} ms | {'PASS' if metrics['latency_p50_ms'] < 1500 else 'SLOW'} |",
+        f"| **P90 Query Latency** | < 3000 ms | {metrics['latency_p90_ms']:.1f} ms | {'PASS' if metrics['latency_p90_ms'] < 3000 else 'SLOW'} |",
         "",
         "---",
         "",
@@ -340,10 +340,10 @@ def generate_markdown_report(results: List[QueryEvalResult], metrics: Dict[str, 
     ]
 
     for r in results:
-        status_icon = "✅ 200" if r.status_code == 200 else f"❌ {r.status_code}"
+        status_str = "200 OK" if r.status_code == 200 else f"HTTP {r.status_code}"
         grounded_pct = (r.grounded_rationales / r.total_recommendations * 100.0) if r.total_recommendations > 0 else 100.0
         lines.append(
-            f"| {r.name} | {status_icon} | {r.latency_ms:.1f} ms | {r.num_results} | {r.distance_violations} | {r.rating_violations} | {grounded_pct:.0f}% |"
+            f"| {r.name} | {status_str} | {r.latency_ms:.1f} ms | {r.num_results} | {r.distance_violations} | {r.rating_violations} | {grounded_pct:.0f}% |"
         )
 
     lines.extend([
@@ -359,7 +359,7 @@ def generate_markdown_report(results: List[QueryEvalResult], metrics: Dict[str, 
             lines.append(f"### {r.name}")
             for rec in r.sample_recommendations[:2]:
                 cuisines_str = ", ".join(rec['cuisines']) if rec['cuisines'] else "N/A"
-                lines.append(f"- **{rec['name']}** (⭐ {rec['rating']} | 📍 {rec['distance']} km | 🍴 {cuisines_str})")
+                lines.append(f"- **{rec['name']}** (Rating: {rec['rating']} | Distance: {rec['distance']} km | Cuisines: {cuisines_str})")
                 lines.append(f"  > *Rationale:* {rec['rationale']}")
             lines.append("")
 
@@ -385,16 +385,16 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"\n=======================================================")
-    print(f"🚀 Launching RAG Evaluation Suite against {args.url}")
+    print(f"Launching RAG Evaluation Suite against {args.url}")
     print(f"=======================================================\n")
 
     # Quick health check
     health_url = f"{args.url}/actuator/health"
     try:
         with urllib.request.urlopen(health_url, timeout=5) as resp:
-            print(f"✅ Backend Health: HTTP {resp.status} (Actuator online)")
+            print(f"[OK] Backend Health: HTTP {resp.status} (Actuator online)")
     except Exception as e:
-        print(f"⚠️ Warning: Could not reach {health_url}: {e}")
+        print(f"[WARN] Warning: Could not reach {health_url}: {e}")
         print("Continuing with evaluation queries...\n")
 
     results: List[QueryEvalResult] = []
@@ -411,7 +411,7 @@ def main() -> None:
     metrics = compute_metrics(results)
 
     print("\n" + "=" * 55)
-    print("📈 EVALUATION SUMMARY METRICS")
+    print("EVALUATION SUMMARY METRICS")
     print("=" * 55)
     print(f"Total Queries:              {metrics['total_queries']}")
     print(f"Successful Queries:         {metrics['successful_queries']} ({metrics['success_rate_pct']:.1f}%)")
@@ -429,7 +429,7 @@ def main() -> None:
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(report_content)
-    print(f"\n📄 Comprehensive evaluation report saved to: {out_path.resolve()}\n")
+    print(f"\nEvaluation report saved to: {out_path.resolve()}\n")
 
 
 if __name__ == "__main__":

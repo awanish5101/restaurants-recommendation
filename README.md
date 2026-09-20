@@ -1,4 +1,4 @@
-# 🍽️ AI-Powered Restaurant Recommendation & Semantic Search Engine
+# Restaurant Recommendation Engine
 
 [![CI](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/awanish5101/restaurants-recommendation/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
@@ -15,7 +15,7 @@ Engineered with production resilience: hybrid spatial + vector filtering, struct
 
 ---
 
-## 🎯 Recruiter & Engineering Highlights
+## Architecture & Key Highlights
 
 | Pillar | Engineering Decisions & Implementation |
 | :--- | :--- |
@@ -23,21 +23,21 @@ Engineered with production resilience: hybrid spatial + vector filtering, struct
 | **Hybrid Spatial + Vector Retrieval** | Co-locates relational restaurant metadata with 768-dimensional vector embeddings in **PostgreSQL + pgvector**, evaluating HNSW cosine similarity and Haversine distance constraints in a single query path. |
 | **Anti-Hallucination Guardrails** | Candidate pool is strictly fetched from validated database records. LLM prompts enforce structured rationale schemas, with runtime validation ensuring rationales only reference verified candidates. |
 | **Deterministic Fallback Degradation** | Zero downtime: If Gemini API quota is throttled, network drops, or no API key is supplied, the service gracefully degrades to a deterministic, rule-based scoring engine (100% SLA). |
-| **Embedding Caching & Latency** | Caffeine L1 in-memory caching eliminates duplicate vectorization calls, reducing median P50 query latency to **~16 ms**. |
+| **Embedding Caching & Latency** | Caffeine L1 in-memory caching eliminates duplicate vectorization calls, reducing median P50 query latency to **~18 ms**. |
 | **Observability & MLOps** | Automated RAG benchmark evaluation suite (`eval_rag.py`), OpenAPI 3 / Swagger UI documentation, Spring Boot Actuator health checks, and a live GitHub Actions CI pipeline. |
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Client["🖥️ Frontend & Client Layer"]
+    subgraph Client["Frontend & Client Layer"]
         UI["Streamlit Geospatial UI<br/>(Folium Map + Radius + Filters)"]
         Curl["External REST Clients / Swagger UI"]
     end
 
-    subgraph ServiceLayer["⚙️ Spring Boot 3 Backend Service"]
+    subgraph ServiceLayer["Spring Boot 3 Backend Service"]
         Controller["RestaurantController<br/>POST /api/restaurants/recommend"]
         History["HistoryController<br/>POST /history/visit & /history/rate"]
         Service["RestaurantService<br/>(Hybrid Orchestration)"]
@@ -45,12 +45,12 @@ flowchart TD
         Fallback["RuleBasedRecommender<br/>(Zero-Downtime Fallback)"]
     end
 
-    subgraph AI["🧠 Generative AI & Vector Layer"]
+    subgraph AI["Generative AI & Vector Layer"]
         Gemini["Google Gemini Client<br/>(gemini-2.5-flash)"]
         Embeddings["Embedding API<br/>(text-embedding-004)"]
     end
 
-    subgraph Data["💾 Persistence Layer (PostgreSQL 16)"]
+    subgraph Data["Persistence Layer (PostgreSQL 16)"]
         DB[("PostgreSQL + pgvector<br/>- HNSW Cosine Index<br/>- Haversine Distance Filters<br/>- Flyway Schema Migrations")]
     end
 
@@ -71,7 +71,7 @@ flowchart TD
 
 ---
 
-## 🔄 RAG Request Lifecycle & Guardrails
+## RAG Request Lifecycle & Guardrails
 
 ```mermaid
 sequenceDiagram
@@ -111,7 +111,7 @@ sequenceDiagram
 
 ---
 
-## 📊 RAG Benchmark & Quantitative Evaluation
+## Benchmark & Evaluation Results
 
 The system includes an automated quantitative evaluation suite (`scripts/eval_rag.py`) verifying constraint adherence, response groundness, and latency percentiles across distinct user personas:
 
@@ -130,7 +130,7 @@ The system includes an automated quantitative evaluation suite (`scripts/eval_ra
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 restaurants-recommendation/
@@ -169,7 +169,7 @@ restaurants-recommendation/
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### Prerequisites
 - **Java 21+** & **Maven 3.9+** (or Docker & Docker Compose)
@@ -225,7 +225,7 @@ Open **`http://localhost:8501`** in your browser to interact with the map, adjus
 
 ---
 
-## 🔌 API Reference & Interactive Docs
+## API Reference & Interactive Docs
 
 ### 1. Restaurant Recommendation
 `POST /api/restaurants/recommend?latitude={lat}&longitude={lon}`
@@ -276,7 +276,7 @@ curl -X POST "http://localhost:8080/history/rate?userId=user_42&restaurantId=175
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 ```bash
 # Run full Maven test suite (Unit, Mockito resilience, Slice Integration tests)
@@ -290,7 +290,7 @@ python3 scripts/eval_rag.py --url http://localhost:8080 --output docs/rag_eval_r
 
 ---
 
-## ⚙️ Environment Configuration
+## Environment Configuration
 
 | Variable | Description | Default |
 | :--- | :--- | :--- |
@@ -303,6 +303,6 @@ python3 scripts/eval_rag.py --url http://localhost:8080 --output docs/rag_eval_r
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).

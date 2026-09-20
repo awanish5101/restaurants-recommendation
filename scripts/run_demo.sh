@@ -6,7 +6,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
 echo "========================================================"
-echo "🚀 Starting AI Restaurant Recommender Streamlit Demo"
+echo "Starting Restaurant Recommender Streamlit Demo"
 echo "========================================================"
 
 if ! command -v streamlit &> /dev/null; then

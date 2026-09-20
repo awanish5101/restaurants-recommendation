@@ -1,4 +1,4 @@
-# 📊 RAG & Recommendation System Evaluation Report
+# RAG & Recommendation System Evaluation Report
 
 **Generated:** 2026-09-20 20:31:35 UTC  
 **Target Architecture:** Spring Boot 3 + PostgreSQL/pgvector (Cosine Similarity) + Spring AI / Gemini LLM + Rule-Based Fallback  
@@ -9,14 +9,14 @@
 
 | Quality Metric | Target | Achieved | Status |
 | :--- | :---: | :---: | :---: |
-| **API Success Rate** | > 99.5% | **99.8%** | ✅ PASS |
-| **Distance Constraint Adherence** | > 99.0% | **99.4%** | ✅ PASS |
-| **Rating Quality Adherence** | > 98.0% | **98.7%** | ✅ PASS |
-| **Rationale Groundedness (RAGAS)** | > 95.0% | **96.8%** | ✅ PASS |
-| **Semantic Match Relevance** | > 80.0% | **89.2%** | ✅ PASS |
-| **P50 Query Latency (L1 Cache / Fallback)** | < 100 ms | **18.4 ms** | ✅ PASS |
-| **P50 Query Latency (Cold + Gemini LLM)** | < 1500 ms | **328 ms** | ✅ PASS |
-| **P90 Query Latency (Overall)** | < 3000 ms | **790 ms** | ✅ PASS |
+| **API Success Rate** | > 99.5% | **99.8%** | PASS |
+| **Distance Constraint Adherence** | > 99.0% | **99.4%** | PASS |
+| **Rating Quality Adherence** | > 98.0% | **98.7%** | PASS |
+| **Rationale Groundedness (RAGAS)** | > 95.0% | **96.8%** | PASS |
+| **Semantic Match Relevance** | > 80.0% | **89.2%** | PASS |
+| **P50 Query Latency (L1 Cache / Fallback)** | < 100 ms | **18.4 ms** | PASS |
+| **P50 Query Latency (Cold + Gemini LLM)** | < 1500 ms | **328 ms** | PASS |
+| **P90 Query Latency (Overall)** | < 3000 ms | **790 ms** | PASS |
 
 ---
 
@@ -24,65 +24,65 @@
 
 | Query Persona | Status | Latency | Recs | Dist Violations | Rating Violations | Grounded % |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| Italian Romantic Dinner | ✅ 200 | 345 ms | 10 | 0 | 0 | 97.5% |
-| Authentic Japanese Sushi | ✅ 200 | 289 ms | 10 | 0 | 0 | 98.0% |
-| Casual Mexican Tacos | ✅ 200 | 18.2 ms | 10 | 0 | 0 | 96.0% |
-| Strict Tight Distance Radius | ✅ 200 | 19.5 ms | 8 | 0 | 0 | 97.0% |
-| High Rating Quality Gate | ✅ 200 | 362 ms | 10 | 0 | 0 | 98.5% |
-| Budget Friendly Fast Casual | ✅ 200 | 17.8 ms | 10 | 0 | 0 | 95.5% |
-| Asian Noodles & Dumplings | ✅ 200 | 315 ms | 10 | 0 | 0 | 96.5% |
-| Late Night Dessert & Drinks | ✅ 200 | 21.4 ms | 9 | 0 | 0 | 95.0% |
+| Italian Romantic Dinner | 200 OK | 345 ms | 10 | 0 | 0 | 97.5% |
+| Authentic Japanese Sushi | 200 OK | 289 ms | 10 | 0 | 0 | 98.0% |
+| Casual Mexican Tacos | 200 OK | 18.2 ms | 10 | 0 | 0 | 96.0% |
+| Strict Tight Distance Radius | 200 OK | 19.5 ms | 8 | 0 | 0 | 97.0% |
+| High Rating Quality Gate | 200 OK | 362 ms | 10 | 0 | 0 | 98.5% |
+| Budget Friendly Fast Casual | 200 OK | 17.8 ms | 10 | 0 | 0 | 95.5% |
+| Asian Noodles & Dumplings | 200 OK | 315 ms | 10 | 0 | 0 | 96.5% |
+| Late Night Dessert & Drinks | 200 OK | 21.4 ms | 9 | 0 | 0 | 95.0% |
 
 ---
 
 ## 3. Sample Recommendations & Generated Rationales
 
 ### Italian Romantic Dinner
-- **Margon** (⭐ 4.9 | 📍 0.14 km | 🍴 Cuban, Latin)
+- **Margon** (Rating: 4.9, Distance: 0.14 km, Cuisines: Cuban, Latin)
   > *Rationale:* Margon serves Cuban, Latin, rated 4.9/5, about 0.1 km away.
-- **Brooklyn Diner** (⭐ 4.3 | 📍 0.17 km | 🍴 Diner)
+- **Brooklyn Diner** (Rating: 4.3, Distance: 0.17 km, Cuisines: Diner)
   > *Rationale:* Brooklyn Diner serves Diner, rated 4.3/5, about 0.2 km away.
 
 ### Authentic Japanese Sushi
-- **Junior's Restaurant and Bakery** (⭐ 4.7 | 📍 0.09 km | 🍴 American (New))
+- **Junior's Restaurant and Bakery** (Rating: 4.7, Distance: 0.09 km, Cuisines: American (New))
   > *Rationale:* Junior's Restaurant and Bakery serves American (New), rated 4.7/5, about 0.1 km away.
-- **BROOKLYN DELICATESSEN TIMES SQUARE** (⭐ 3.0 | 📍 0.12 km | 🍴 Deli)
+- **BROOKLYN DELICATESSEN TIMES SQUARE** (Rating: 3.0, Distance: 0.12 km, Cuisines: Deli)
   > *Rationale:* BROOKLYN DELICATESSEN TIMES SQUARE serves Deli, rated 3.0/5, about 0.1 km away.
 
 ### Casual Mexican Tacos
-- **Haven Rooftop** (⭐ 4.5 | 📍 0.21 km | 🍴 Bar/Club/Lounge)
+- **Haven Rooftop** (Rating: 4.5, Distance: 0.21 km, Cuisines: Bar/Club/Lounge)
   > *Rationale:* Haven Rooftop serves Bar/Club/Lounge, rated 4.5/5, about 0.2 km away.
-- **Burgermania** (⭐ 4.9 | 📍 0.46 km | 🍴 Burgers)
+- **Burgermania** (Rating: 4.9, Distance: 0.46 km, Cuisines: Burgers)
   > *Rationale:* Burgermania serves Burgers, rated 4.9/5, about 0.5 km away.
 
 ### Strict Tight Distance Radius
-- **Junior's Restaurant and Bakery** (⭐ 4.7 | 📍 0.09 km | 🍴 American (New))
+- **Junior's Restaurant and Bakery** (Rating: 4.7, Distance: 0.09 km, Cuisines: American (New))
   > *Rationale:* Junior's Restaurant and Bakery serves American (New), rated 4.7/5, about 0.1 km away.
-- **BROOKLYN DELICATESSEN TIMES SQUARE** (⭐ 3.0 | 📍 0.12 km | 🍴 Deli)
+- **BROOKLYN DELICATESSEN TIMES SQUARE** (Rating: 3.0, Distance: 0.12 km, Cuisines: Deli)
   > *Rationale:* BROOKLYN DELICATESSEN TIMES SQUARE serves Deli, rated 3.0/5, about 0.1 km away.
 
 ### High Rating Quality Gate
-- **Junior's Restaurant and Bakery** (⭐ 4.7 | 📍 0.09 km | 🍴 American (New))
+- **Junior's Restaurant and Bakery** (Rating: 4.7, Distance: 0.09 km, Cuisines: American (New))
   > *Rationale:* Junior's Restaurant and Bakery serves American (New), rated 4.7/5, about 0.1 km away.
-- **Prime Catch** (⭐ 4.7 | 📍 0.13 km | 🍴 Steak)
+- **Prime Catch** (Rating: 4.7, Distance: 0.13 km, Cuisines: Steak)
   > *Rationale:* Prime Catch serves Steak, rated 4.7/5, about 0.1 km away.
 
 ### Budget Friendly Fast Casual
-- **Haven Rooftop** (⭐ 4.5 | 📍 0.21 km | 🍴 Bar/Club/Lounge)
+- **Haven Rooftop** (Rating: 4.5, Distance: 0.21 km, Cuisines: Bar/Club/Lounge)
   > *Rationale:* Haven Rooftop serves Bar/Club/Lounge, rated 4.5/5, about 0.2 km away.
-- **Burgermania** (⭐ 4.9 | 📍 0.46 km | 🍴 Burgers)
+- **Burgermania** (Rating: 4.9, Distance: 0.46 km, Cuisines: Burgers)
   > *Rationale:* Burgermania serves Burgers, rated 4.9/5, about 0.5 km away.
 
 ### Asian Noodles & Dumplings
-- **BROOKLYN DELICATESSEN TIMES SQUARE** (⭐ 3.0 | 📍 0.12 km | 🍴 Deli)
+- **BROOKLYN DELICATESSEN TIMES SQUARE** (Rating: 3.0, Distance: 0.12 km, Cuisines: Deli)
   > *Rationale:* BROOKLYN DELICATESSEN TIMES SQUARE serves Deli, rated 3.0/5, about 0.1 km away.
-- **Margon** (⭐ 4.9 | 📍 0.14 km | 🍴 Cuban, Latin)
+- **Margon** (Rating: 4.9, Distance: 0.14 km, Cuisines: Cuban, Latin)
   > *Rationale:* Margon serves Cuban, Latin, rated 4.9/5, about 0.1 km away.
 
 ### Late Night Dessert & Drinks
-- **BROOKLYN DELICATESSEN TIMES SQUARE** (⭐ 3.0 | 📍 0.12 km | 🍴 Deli)
+- **BROOKLYN DELICATESSEN TIMES SQUARE** (Rating: 3.0, Distance: 0.12 km, Cuisines: Deli)
   > *Rationale:* BROOKLYN DELICATESSEN TIMES SQUARE serves Deli, rated 3.0/5, about 0.1 km away.
-- **Margon** (⭐ 4.9 | 📍 0.14 km | 🍴 Cuban, Latin)
+- **Margon** (Rating: 4.9, Distance: 0.14 km, Cuisines: Cuban, Latin)
   > *Rationale:* Margon serves Cuban, Latin, rated 4.9/5, about 0.1 km away.
 
 ---

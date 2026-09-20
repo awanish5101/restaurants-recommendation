@@ -49,7 +49,7 @@ public class EmbeddingService {
         StringBuilder sb = new StringBuilder();
         sb.append(r.getName());
         if (r.getCuisines() != null && !r.getCuisines().isEmpty()) {
-            sb.append(" — ").append(String.join(", ", r.getCuisines()));
+            sb.append(" - ").append(String.join(", ", r.getCuisines()));
         }
         if (r.getCity() != null) {
             sb.append(" in ").append(r.getCity());
