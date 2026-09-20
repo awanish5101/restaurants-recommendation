@@ -17,8 +17,17 @@ public class RuleBasedRecommender {
 
     public List<RecommendationDTO> recommend(List<RestaurantEntity> candidates) {
         return candidates.stream()
-                .map(r -> new RecommendationDTO(r.getName(), justify(r),
-                        r.getDistanceKm() == null ? 0.0 : r.getDistanceKm()))
+                .map(r -> RecommendationDTO.builder()
+                        .id(r.getId())
+                        .restaurantName(r.getName())
+                        .justification(justify(r))
+                        .distance(r.getDistanceKm() == null ? 0.0 : r.getDistanceKm())
+                        .overallRating(r.getOverallRating())
+                        .priceRange(r.getPriceRange())
+                        .cuisines(r.getCuisines())
+                        .latitude(r.getLatitude())
+                        .longitude(r.getLongitude())
+                        .build())
                 .toList();
     }
 
